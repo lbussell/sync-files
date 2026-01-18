@@ -150,14 +150,8 @@ runs:
         BRANCH_NAME="sync-files/${SANITIZED_PATH}-${CONTENT_HASH}"
         echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
 
-        # Check if branch already exists remotely
-        if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
-          echo "Branch $BRANCH_NAME already exists, checking out"
-          git checkout -B "$BRANCH_NAME" "origin/$BRANCH_NAME"
-        else
-          echo "Creating new branch: $BRANCH_NAME"
-          git checkout -b "$BRANCH_NAME"
-        fi
+        # Create branch from current state (force-push will update remote if it exists)
+        git checkout -B "$BRANCH_NAME"
 
         # Stage and commit changes
         git add -A
