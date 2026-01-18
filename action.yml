@@ -11,6 +11,10 @@ inputs:
   source_path:
     description: 'Path to file or directory in source repository'
     required: true
+  source_branch:
+    description: 'Branch to sync from in the source repository (defaults to the default branch)'
+    required: false
+    default: ''
   target_path:
     description: 'Destination path in current repository (defaults to source_path)'
     required: false
@@ -72,9 +76,14 @@ runs:
       env:
         SOURCE_URL: ${{ steps.validate.outputs.source_url }}
         SOURCE_PATH: ${{ inputs.source_path }}
+        SOURCE_BRANCH: ${{ inputs.source_branch }}
       run: |
         # Clone with sparse checkout for efficiency
-        git clone --depth 1 --filter=blob:none --sparse "$SOURCE_URL" .sync-source
+        if [[ -n "$SOURCE_BRANCH" ]]; then
+          git clone --depth 1 --filter=blob:none --sparse --branch "$SOURCE_BRANCH" "$SOURCE_URL" .sync-source
+        else
+          git clone --depth 1 --filter=blob:none --sparse "$SOURCE_URL" .sync-source
+        fi
         cd .sync-source
         git sparse-checkout set "$SOURCE_PATH"
 

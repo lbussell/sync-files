@@ -58,6 +58,7 @@ jobs:
 | `github_token` | Yes | - | GitHub token with write access on target repo |
 | `source_repo` | Yes | - | Source repository: `owner/repo` for GitHub, or full URL for any git host |
 | `source_path` | Yes | - | Path to file or directory in source repository |
+| `source_branch` | No | default branch | Branch to sync from in the source repository |
 | `target_path` | No | `source_path` | Destination path in current repository |
 | `target_branch` | No | `main` | Target branch for the PR |
 
