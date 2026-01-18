@@ -67,6 +67,7 @@ runs:
         echo "sanitized_path=$SANITIZED_PATH" >> "$GITHUB_OUTPUT"
 
     - name: Clone source repository
+      id: clone
       shell: bash
       env:
         SOURCE_URL: ${{ steps.validate.outputs.source_url }}
@@ -76,6 +77,12 @@ runs:
         git clone --depth 1 --filter=blob:none --sparse "$SOURCE_URL" .sync-source
         cd .sync-source
         git sparse-checkout set "$SOURCE_PATH"
+
+        # Get source commit SHA
+        SOURCE_SHA=$(git rev-parse HEAD)
+        SOURCE_SHORT_SHA=$(echo "$SOURCE_SHA" | cut -c1-7)
+        echo "source_sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+        echo "source_short_sha=$SOURCE_SHORT_SHA" >> "$GITHUB_OUTPUT"
 
     - name: Copy files and detect changes
       id: copy-files
@@ -125,10 +132,6 @@ runs:
           echo "Changes detected:"
           git status --short
           echo "has_changes=true" >> "$GITHUB_OUTPUT"
-
-          # Generate content hash for branch naming
-          CONTENT_HASH=$(git status --porcelain | sha256sum | cut -c1-8)
-          echo "content_hash=$CONTENT_HASH" >> "$GITHUB_OUTPUT"
         fi
 
     - name: Create branch and commit
@@ -137,7 +140,7 @@ runs:
       shell: bash
       env:
         SANITIZED_PATH: ${{ steps.validate.outputs.sanitized_path }}
-        CONTENT_HASH: ${{ steps.copy-files.outputs.content_hash }}
+        SOURCE_SHORT_SHA: ${{ steps.clone.outputs.source_short_sha }}
         SOURCE_REPO: ${{ inputs.source_repo }}
         SOURCE_URL: ${{ steps.validate.outputs.source_url }}
         SOURCE_PATH: ${{ inputs.source_path }}
@@ -148,7 +151,7 @@ runs:
         git config user.email "github-actions[bot]@users.noreply.github.com"
 
         # Create branch name
-        BRANCH_NAME="sync-files/${SANITIZED_PATH}-${CONTENT_HASH}"
+        BRANCH_NAME="sync-files/${SANITIZED_PATH}-${SOURCE_SHORT_SHA}"
         echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
 
         # Create branch from current state (force-push will update remote if it exists)
@@ -156,11 +159,7 @@ runs:
 
         # Stage and commit changes
         git add -A
-        git commit -m "Sync files from $SOURCE_REPO
-
-        Synced: $SOURCE_PATH -> $TARGET_PATH
-
-        Source repository: $SOURCE_URL"
+        git commit -m "Update $TARGET_PATH from $SOURCE_REPO@$SOURCE_SHORT_SHA"
 
         # Push (force to update if branch existed)
         git push -u origin "$BRANCH_NAME" --force
@@ -176,6 +175,8 @@ runs:
         SOURCE_URL: ${{ steps.validate.outputs.source_url }}
         SOURCE_PATH: ${{ inputs.source_path }}
         TARGET_PATH: ${{ steps.validate.outputs.target_path }}
+        SOURCE_SHA: ${{ steps.clone.outputs.source_sha }}
+        SOURCE_SHORT_SHA: ${{ steps.clone.outputs.source_short_sha }}
       with:
         github-token: ${{ inputs.github_token }}
         script: |
@@ -185,6 +186,16 @@ runs:
           const sourceUrl = process.env.SOURCE_URL;
           const sourcePath = process.env.SOURCE_PATH;
           const targetPath = process.env.TARGET_PATH;
+          const sourceSha = process.env.SOURCE_SHA;
+          const sourceShortSha = process.env.SOURCE_SHORT_SHA;
+
+          const commitUrl = `${sourceUrl}/commit/${sourceSha}`;
+          const prTitle = `Update ${targetPath} from ${sourceRepo} commit ${sourceShortSha}`;
+          const prBody = `This PR updates ${targetPath} from [${sourceRepo}@${sourceShortSha}](${commitUrl}).
+
+          ---
+
+          *Automatically created by the [lbussell/sync-files](https://github.com/lbussell/sync-files) action.*`;
 
           // Check for existing PR
           const { data: existingPRs } = await github.rest.pulls.list({
@@ -203,21 +214,10 @@ runs:
             const { data: newPR } = await github.rest.pulls.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: `Sync ${sourcePath} from ${sourceRepo}`,
+              title: prTitle,
               head: branchName,
               base: targetBranch,
-              body: `## File Sync
-
-          This PR synchronizes files from another repository.
-
-          | Property | Value |
-          |----------|-------|
-          | **Source Repository** | [${sourceRepo}](${sourceUrl}) |
-          | **Source Path** | \`${sourcePath}\` |
-          | **Target Path** | \`${targetPath}\` |
-
-          ---
-          *This PR was automatically created by the sync-files action.*`
+              body: prBody
             });
             pr = newPR;
             core.info(`Created new PR #${pr.number}`);
