@@ -1,6 +1,6 @@
 # sync-files Action
 
-GitHub Action that synchronizes a file or directory from another GitHub repository to the current repository via Pull Request.
+GitHub Action that synchronizes a file or directory from another git repository to the current repository via Pull Request.
 
 ## Usage
 
@@ -19,6 +19,10 @@ jobs:
       contents: write
       pull-requests: write
     steps:
+      - name: Checkout target repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Sync file from another repo
         uses: lbussell/sync-files@main
@@ -36,14 +40,23 @@ jobs:
           source_path: some-directory/
           target_path: destination-directory/
           target_branch: dev
+
+      # Syncing from a non-GitHub repository
+      - name: Sync from GitLab
+        uses: lbussell/sync-files@main
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          source_repo: https://gitlab.com/<whatever>
+          source_path: shared/config.json
+          target_path: config.json
 ```
 
 ## Inputs
 
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `github_token` | Yes | - | GitHub token with read access on source repo and write access on target |
-| `source_repo` | Yes | - | Source repository in format `owner/repo` |
+| `github_token` | Yes | - | GitHub token with write access on target repo |
+| `source_repo` | Yes | - | Source repository: `owner/repo` for GitHub, or full URL for any git host |
 | `source_path` | Yes | - | Path to file or directory in source repository |
 | `target_path` | No | `source_path` | Destination path in current repository |
 | `target_branch` | No | `main` | Target branch for the PR |
@@ -63,7 +76,7 @@ permissions:
   pull-requests: write  # Create and update PRs
 ```
 
-If the source repository is private, the `github_token` must also have read access to that repository.
+**Important**: The caller must checkout the target repository before running this action. For private source repositories, configure git credentials in your workflow (the action inherits the git credential configuration from your checkout step).
 
 ## Behavior
 
