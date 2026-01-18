@@ -1,4 +1,4 @@
-# sync-files Action
+# Simple File Sync Action
 
 GitHub Action that synchronizes a file or directory from another git repository to the current repository via Pull Request.
 

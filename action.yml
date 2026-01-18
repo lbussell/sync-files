@@ -1,5 +1,9 @@
-name: 'Sync Files'
+name: 'Simple File Sync'
 description: 'Synchronizes a file or directory from another git repository via Pull Request'
+
+branding:
+  icon: 'copy'
+  color: 'gray-dark'
 
 inputs:
   github_token:
