@@ -41,6 +41,16 @@ jobs:
           target_path: destination-directory/
           target_branch: dev
 
+      # Syncing from a specific branch
+      - name: Sync from development branch
+        uses: lbussell/sync-files@main
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          source_repo: org-name/repo-name
+          source_path: configs/.eslintrc.json
+          target_path: .eslintrc.json
+          source_branch: development
+
       # Syncing from a non-GitHub repository
       - name: Sync from GitLab
         uses: lbussell/sync-files@main
@@ -58,6 +68,7 @@ jobs:
 | `github_token` | Yes | - | GitHub token with write access on target repo |
 | `source_repo` | Yes | - | Source repository: `owner/repo` for GitHub, or full URL for any git host |
 | `source_path` | Yes | - | Path to file or directory in source repository |
+| `source_branch` | No | default branch | Branch to sync from in the source repository |
 | `target_path` | No | `source_path` | Destination path in current repository |
 | `target_branch` | No | `main` | Target branch for the PR |
 
